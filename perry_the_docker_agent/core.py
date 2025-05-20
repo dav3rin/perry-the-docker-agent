@@ -98,11 +98,49 @@ class RemoteDockerClient:
 
         for _name, port_mappings in self.local_port_forwards.items():
             for port_from, port_to in port_mappings.items():
-                cmd_s += f" -L {self.bind_address}:{port_from}:localhost:{port_to}"
+                # Check if this is a port range (contains a dash)
+                if "-" in str(port_from) and "-" in str(port_to):
+                    # Handle port ranges
+                    from_start, from_end = str(port_from).split("-")
+                    to_start, to_end = str(port_to).split("-")
+                    # Verify ranges have the same width
+                    if int(from_end) - int(from_start) == int(to_end) - int(to_start):
+                        # Create separate port forwarding commands for each port in the range
+                        range_width = int(from_end) - int(from_start) + 1
+                        for i in range(range_width):
+                            from_port = int(from_start) + i
+                            to_port = int(to_start) + i
+                            cmd_s += f" -L {self.bind_address}:{from_port}:localhost:{to_port}"
+                    else:
+                        logger.warning(
+                            f"Port ranges {port_from} and {port_to} have different widths, skipping"
+                        )
+                else:
+                    # Handle single ports
+                    cmd_s += f" -L {self.bind_address}:{port_from}:localhost:{port_to}"
 
         for _name, port_mappings in self.remote_port_forwards.items():
             for port_from, port_to in port_mappings.items():
-                cmd_s += f" -R 0.0.0.0:{port_from}:localhost:{port_to}"
+                # Check if this is a port range (contains a dash)
+                if "-" in str(port_from) and "-" in str(port_to):
+                    # Handle port ranges
+                    from_start, from_end = str(port_from).split("-")
+                    to_start, to_end = str(port_to).split("-")
+                    # Verify ranges have the same width
+                    if int(from_end) - int(from_start) == int(to_end) - int(to_start):
+                        # Create separate port forwarding commands for each port in the range
+                        range_width = int(from_end) - int(from_start) + 1
+                        for i in range(range_width):
+                            from_port = int(from_start) + i
+                            to_port = int(to_start) + i
+                            cmd_s += f" -R 0.0.0.0:{from_port}:localhost:{to_port}"
+                    else:
+                        logger.warning(
+                            f"Port ranges {port_from} and {port_to} have different widths, skipping"
+                        )
+                else:
+                    # Handle single ports
+                    cmd_s += f" -R 0.0.0.0:{port_from}:localhost:{port_to}"
 
         logger.info("Starting tunnel")
         cmd = shlex.split(cmd_s)
