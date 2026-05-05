@@ -1,6 +1,6 @@
 import os
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Optional
 
 from pydantic import BaseModel
 
@@ -13,10 +13,10 @@ class PerryConfig(BaseModel):
     bind_address: str = "localhost"
 
     # --- ssh
-    key_path: Optional[str]
+    key_path: Optional[str] = None
 
     # -- labeling
-    env_label: Optional[str]
+    env_label: Optional[str] = None
 
     env_label_suffix: str = "s"
     separator: str = "-"
@@ -24,17 +24,17 @@ class PerryConfig(BaseModel):
     # --- paths
 
     instance_config_path: Optional[str] = "./perry_instance_config.json"
-    instance_pem_path: Optional[str]
+    instance_pem_path: Optional[str] = None
 
     # --- unison properties
-    ignore_dirs: List[str] = []
-    local_port_forwards: Dict[str, Dict[str, str]] = {}
-    remote_port_forwards: Dict[str, Dict[str, str]] = {}
-    sync_paths: List[Path]
+    ignore_dirs: list[str] = []
+    local_port_forwards: dict[str, dict[str, str]] = {}
+    remote_port_forwards: dict[str, dict[str, str]] = {}
+    sync_paths: list[Path]
 
     # --- instance properties
-    instance_username = "ubuntu"
-    bootstrap_command = r"""
+    instance_username: str = "ubuntu"
+    bootstrap_command: str = r"""
         set -x
         && sudo sysctl -w net.core.somaxconn=4096
         && sudo echo GRUB_CMDLINE_LINUX=\\"\"cdgroup_enable=memory swapaccount=1\\"\" | sudo tee -a /etc/default/grub.d/50-cloudimg-settings.cfg
@@ -59,7 +59,7 @@ class PerryConfig(BaseModel):
         return os.path.expanduser("~")
 
     @property
-    def expanded_sync_paths(self) -> List[str]:
+    def expanded_sync_paths(self) -> list[str]:
         return [
             str(Path(os.path.expanduser(f)).absolute()).split(
                 self.expanded_sync_dir + os.sep

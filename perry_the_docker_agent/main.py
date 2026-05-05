@@ -1,11 +1,12 @@
 from typing import Annotated, Optional
 
 import typer
+from rich import print
+from yaml import safe_load
+
 from perry_the_docker_agent.config.instance_config import PerryInstanceConfig
 from perry_the_docker_agent.config.perry_config import PerryConfig
 from perry_the_docker_agent.core import RemoteDockerClient
-from rich import print
-from yaml import safe_load
 
 app = typer.Typer(pretty_exceptions_enable=False)
 
@@ -25,6 +26,17 @@ def sync(ctx: typer.Context):
     client.sync()
 
 
+@app.command("sync-once")
+def sync_once(ctx: typer.Context):
+    """Push local changes to remote once and exit.
+
+    Lean alternative to ``perry sync`` for agents and scripts: skips the
+    SSH setup steps and the watch loop, doing only the unison push.
+    """
+    client: RemoteDockerClient = ctx.obj
+    client.sync_once()
+
+
 @app.command()
 def bootstrap(ctx: typer.Context):
     """Connect to the remote agent via SSH"""
@@ -37,7 +49,7 @@ def ssh(
     ctx: typer.Context,
     *,
     command: Annotated[Optional[str], typer.Argument(help="ssh command")] = None,
-    options: Annotated[Optional[str], typer.Option(help="ssh options")] = None
+    options: Annotated[Optional[str], typer.Option(help="ssh options")] = None,
 ):
     """Connect to the remote agent via SSH"""
     client: RemoteDockerClient = ctx.obj
@@ -70,7 +82,8 @@ def entry(
         help="Path of the perry config",
     ),
 ):
-    loaded_yaml = safe_load(open(config_path))
+    with open(config_path, encoding="utf-8") as config_file:
+        loaded_yaml = safe_load(config_file)
 
     config = PerryConfig.parse_obj(loaded_yaml)
 

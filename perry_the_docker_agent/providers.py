@@ -1,20 +1,19 @@
-import logging
 import os
 import platform
 import shlex
 import subprocess
-import sys
 import time
 from functools import lru_cache
-from typing import Dict, Optional
+from typing import Optional
 
 import boto3
+
 from perry_the_docker_agent.config.instance_config import PerryInstanceConfig
 
 from .util import logger
 
 
-@lru_cache()
+@lru_cache
 def _get_ec2_client(region, *, profile_name: Optional[str]):
     session = boto3.Session(profile_name=profile_name)
     return session.client(
@@ -41,12 +40,12 @@ class AWSInstanceProvider:
             self.instance_config.region, profile_name=self.instance_config.aws_profile
         )
 
-    def _search_for_instances(self) -> Dict:
+    def _search_for_instances(self) -> dict:
         return self._ec2_client.describe_instances(
             InstanceIds=[self.instance_config.instance_id]
         )
 
-    def _get_instance(self) -> Dict:
+    def _get_instance(self) -> dict:
         reservations = self._search_for_instances()["Reservations"]
         valid_reservations = [
             reservation
@@ -101,7 +100,7 @@ class AWSInstanceProvider:
 
     def _set_disable_api_termination(self, value: bool):
         return self._ec2_client.modify_instance_attribute(
-            DisableApiTermination=dict(Value=value),
+            DisableApiTermination={"Value": value},
             InstanceId=self.instance_config.instance_id,
         )
 

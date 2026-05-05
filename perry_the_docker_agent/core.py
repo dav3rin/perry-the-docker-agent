@@ -2,7 +2,6 @@ import os
 import shlex
 import subprocess
 from getpass import getuser
-from typing import Dict, List
 
 from perry_the_docker_agent.config.instance_config import PerryInstanceConfig
 from perry_the_docker_agent.config.perry_config import PerryConfig
@@ -15,11 +14,11 @@ class RemoteDockerClient:
         self,
         *,
         instance: AWSInstanceProvider,
-        local_port_forwards: Dict[str, Dict[str, str]],
-        remote_port_forwards: Dict[str, Dict[str, str]],
+        local_port_forwards: dict[str, dict[str, str]],
+        remote_port_forwards: dict[str, dict[str, str]],
         ssh_key_path: str,
         sync_dir: str,
-        sync_paths: List[str],
+        sync_paths: list[str],
         ignore_dirs: str,
         project_code: str,
         bind_address: str,
@@ -80,7 +79,6 @@ class RemoteDockerClient:
         return self.instance.is_termination_protection_enabled()
 
     def start_tunnel(self):
-
         ip = self.instance.get_ip()
         cmd_s = (
             "sudo ssh -v -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=no"
@@ -195,11 +193,11 @@ class RemoteDockerClient:
         *,
         ip: str,
         replica_path: str,
-        sync_paths: List[str],
-        ignore_dirs: List[str],
+        sync_paths: list[str],
+        ignore_dirs: list[str],
         force: bool = False,
         repeat_watch: bool = False,
-    ) -> List[str]:
+    ) -> list[str]:
         cmd_s = (
             f"unison {replica_path}"
             f" 'ssh://{self.instance.username}@{ip}/{replica_path}'"
@@ -265,3 +263,26 @@ class RemoteDockerClient:
 
         logger.info(f"Running watch command: {watch_cmd}")
         os.execvp(watch_cmd[0], watch_cmd)
+
+    def sync_once(self):
+        """One-shot push of local changes to remote.
+
+        Skips the SSH setup steps that ``sync`` performs (remote-dir install,
+        root-owned-file cleanup) and the watch loop. Intended for agents and
+        scripts that need a deterministic "push my edits and exit" step.
+        """
+        ip = self.get_ip()
+
+        push_cmd = self._get_unison_cmd(
+            ip=ip,
+            replica_path=self.sync_dir,
+            sync_paths=self.sync_paths,
+            ignore_dirs=self.ignore_dirs,
+            force=True,
+        )
+
+        logger.info(f"Running one-shot push: {push_cmd}")
+
+        subprocess.run(push_cmd, check=True)
+
+        logger.info("One-shot sync complete")
