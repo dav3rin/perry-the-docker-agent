@@ -1,7 +1,6 @@
 import os
 import shlex
 import subprocess
-from getpass import getuser
 
 from perry_the_docker_agent.config.instance_config import PerryInstanceConfig
 from perry_the_docker_agent.config.perry_config import PerryConfig
@@ -81,17 +80,17 @@ class RemoteDockerClient:
     def start_tunnel(self):
         ip = self.instance.get_ip()
         cmd_s = (
-            "sudo ssh -v -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=no"
+            "ssh -v -o ExitOnForwardFailure=yes -o StrictHostKeyChecking=no"
             " -o ServerAliveInterval=60 -N -T"
             f" -i {self.ssh_key_path} {self.instance.username}@{ip}"
         )
 
-        target_sock = f"/var/run/{self.project_code}.sock"
+        # Socket lives in /tmp so the tunnel needs no sudo (and no password
+        # prompt): /var/run is root-owned, /tmp is user-writable.
+        target_sock = f"/tmp/{self.project_code}.sock"
         cmd_s += (
             f" -L {target_sock}:/var/run/docker.sock"
             " -o StreamLocalBindUnlink=yes"
-            " -o PermitLocalCommand=yes"
-            f" -o LocalCommand='sudo chown {getuser()} {target_sock}'"
         )
 
         for _name, port_mappings in self.local_port_forwards.items():
@@ -172,7 +171,7 @@ class RemoteDockerClient:
             (
                 f"docker context inspect {self.project_code} &>/dev/null || "
                 "docker context create"
-                f" --docker host=unix:///var/run/{self.project_code}.sock {self.project_code}"
+                f" --docker host=unix:///tmp/{self.project_code}.sock {self.project_code}"
             ),
             check=True,
             shell=True,
